@@ -13,19 +13,25 @@ dim = 1280  # EffientNetB0 output has 1280 features when input image size is (15
 nbit= 64
 
 
-####### Train faiss.IndexLSH
-index = faiss.IndexLSH(dim, nbit)
+####### Load features and labels and file_names
 train_paths = glob.glob('./features/total_train/**/*.npz', recursive=True)
 train_paths = sorted(train_paths)
 
 labels = []
 file_names = []
+all_features = []
 for train_path in tqdm.tqdm(train_paths):
     traindata = np.load(train_path)
 
-    index.add(traindata['features'])
+    all_features.append(traindata['features'])
     labels.extend(traindata['labels'])
     file_names.extend(traindata['file_names'])
+
+all_features = np.vstack(all_features)
+
+###### Train faiss.IndexLSH
+index = faiss.IndexLSH(dim, nbit)
+index.add(all_features)
 
 faiss.write_index(index, 'IndexLSH.index')
 

@@ -13,15 +13,9 @@ dim = 1280  # EffientNetB0 output has 1280 features when input image size is (15
 nbit= 64
 
 
-####### Train annoy.AnnoyIndex
-index = annoy.AnnoyIndex(dim)
-
+####### Load features and labels and file_names
 train_paths = glob.glob('./features/total_train/**/*.npz', recursive=True)
 train_paths = sorted(train_paths)
-
-n_trees = 10
-
-index = annoy.AnnoyIndex(dim, 'angular')
 
 labels = []
 file_names = []
@@ -34,6 +28,10 @@ for train_path in tqdm.tqdm(train_paths):
     file_names.extend(traindata['file_names'])
 
 all_features = np.vstack(all_features)
+
+###### Train annoy.AnnoyIndex
+n_trees = 10
+index = annoy.AnnoyIndex(dim, 'angular')
 
 for i, feature in tqdm.tqdm(enumerate(all_features)):
     index.add_item(i, feature)

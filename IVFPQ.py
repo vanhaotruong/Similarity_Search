@@ -13,10 +13,7 @@ dim = 1280  # EffientNetB0 output has 1280 features when input image size is (15
 nbit= 8
 
 
-####### Train faiss.IndexIVFPQ
-quantizer = faiss.IndexFlatL2(dim)
-index = faiss.IndexIVFPQ(quantizer, dim, 256, 8, nbit)
-
+####### Load features and labels and file_names
 train_paths = glob.glob('./features/total_train/**/*.npz', recursive=True)
 train_paths = sorted(train_paths)
 
@@ -31,6 +28,11 @@ for train_path in tqdm.tqdm(train_paths):
     file_names.extend(traindata['file_names'])
 
 all_features = np.vstack(all_features)
+
+####### Train faiss.IndexIVFPQ
+quantizer = faiss.IndexFlatL2(dim)
+index = faiss.IndexIVFPQ(quantizer, dim, 256, 8, nbit)
+
 index.train(all_features)
 
 # Add all features to the index
