@@ -194,7 +194,7 @@ def inference(feature, method, index_file=None, train_info_folder = None, nneigh
     return k_neighbors
 
 if __name__ == '__main__':
-    method = 'IVFPQ'
+    method = 'Annoy'
 
     model = EfficientNetB0(weights='imagenet', include_top=False, pooling='avg')
     dim = model.output_shape[1] # Dimension of the feature vector
@@ -204,8 +204,8 @@ if __name__ == '__main__':
     ################ Extract_Features ################
     # image_folder = ['./Intel_Classification_Dataset/seg_train', 
     # #                 './Intel_Classification_Dataset/seg_test']
-    image_folder = './Dataset'
-    extract_features(image_folder, batch_size=640, target_size=target_size)
+    # image_folder = './Dataset'
+    # extract_features(image_folder, batch_size=640, target_size=target_size)
 
 
     # ############### Create Indexing ################
@@ -217,7 +217,8 @@ if __name__ == '__main__':
         train_info = np.load(train_info_path)
         dataset_features.append(train_info['features'])
 
-
+    dataset_features = np.vstack(dataset_features)
+    indexing(dataset_features, method)
 
     # # ################# Calculate Accuracy, Precision, Recall, F1-Score ################
     testset_info = glob.glob('./features/test_files/**/*.npz', recursive=True)
@@ -236,10 +237,6 @@ if __name__ == '__main__':
                 feature = np.expand_dims(feature, axis=0)
             nearest_neighbor = inference(feature, method, nneighbors=1)
             y_pred_labels.append(nearest_neighbor[0][1])
-
-    print(len(y_true_labels), len(y_pred_labels))
-    print(y_true_labels[:10])
-    print(y_pred_labels[:10])
 
     accuracy = accuracy_score(y_true_labels, y_pred_labels)
     precision = precision_score(y_true_labels, y_pred_labels, average='weighted')
@@ -264,9 +261,9 @@ if __name__ == '__main__':
     plt.show()
 
     ############### Inference ################
-    ## Randomly select an image from the dataset ###
+    ## Randomly select an image from the dataset ##
+    # image_paths = glob.glob('./Intel_Classification_Dataset/**/*.jpg', recursive=True) 
     image_paths = glob.glob('./Dataset/**/*.jpg', recursive=True) 
-    image_paths = glob.glob('./Intel_Classification_Dataset/**/*.jpg', recursive=True) 
     img_path = random.choice(image_paths)
 
     ## Load the image and extract the feature ##
@@ -286,12 +283,13 @@ if __name__ == '__main__':
     plt.figure(figsize=(60, 20))
     plt.subplot(1, nneighbors + 1, 1)
     plt.imshow(query_img)
-    plt.title(f'Query Image: {query_label}')
+    plt.title(f'Query: {query_label}')
 
     for i, (d, label, file_name) in enumerate(k_neighbors):
         plt.subplot(1, nneighbors + 1, i+2)
         plt.imshow(mpimg.imread(file_name))
-        plt.title(f'Label: {label}')
+        print(label, file_name)
+        plt.title(f'{label}')
 
     plt.show()
  
