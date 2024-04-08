@@ -104,6 +104,7 @@ def indexing(dataset_features, method):
     - For 'Annoy' method, save the index in the './Index/IndexAnnoy.ann' file.
     - For 'LSH' method, save the index in the './Index/IndexLSH.lsh' file.
     - For 'IVFPQ' method, save the index in the './Index/IndexIVF.ivf' file.
+    
     '''
 
     if not os.path.exists('./Index'):
@@ -144,7 +145,7 @@ def inference(feature, method, index_file=None, train_info_folder = None, nneigh
     - nneighbors: int. Number of nearest neighbors to return.
 
     Return:
-    - k_neighbors: list of tuples. Each tuple contains the distance, label, and file name of the nearest neighbor.
+    - k_neighbors: list of tuples. Each tuple contains the simiarity, label, and file name of the nearest neighbor.
     '''
     if train_info_folder:
         train_info_paths = glob.glob(train_info_folder)
@@ -152,10 +153,12 @@ def inference(feature, method, index_file=None, train_info_folder = None, nneigh
         train_info_paths = glob.glob('./features/train_files/**/*.npz', recursive=True)
 
     train_info_paths = sorted(train_info_paths)
+    batch_size = np.load(train_info_paths[0])['features'].shape[0]
 
     file_names = []
     labels = []
-    for train_info_path in tqdm.tqdm(train_info_paths):
+
+    for idx, train_info_path in enumerate(train_info_paths):
         train_info = np.load(train_info_path)
         file_names.extend(train_info['file_names'])
         labels.extend(train_info['labels'])
@@ -189,12 +192,18 @@ def inference(feature, method, index_file=None, train_info_folder = None, nneigh
         print('Invalid method')
         return None
     
-    for i, d in zip(I, D):
-        k_neighbors.append((d, labels[i], file_names[i]))
+    
+    for i in I:
+        batch_idx = i//batch_size
+        sub_idx = i%batch_size
+        feature = np.squeeze(feature)
+        nb_feature = np.load(train_info_paths[batch_idx])['features'][sub_idx]
+        similarity = np.dot(feature, nb_feature.T)/(np.linalg.norm(feature)*np.linalg.norm(nb_feature))
+        k_neighbors.append((similarity, labels[i], file_names[i]))
     return k_neighbors
 
 if __name__ == '__main__':
-    method = 'Annoy'
+    method = 'IVFPQ'
 
     model = EfficientNetB0(weights='imagenet', include_top=False, pooling='avg')
     dim = model.output_shape[1] # Dimension of the feature vector
@@ -209,56 +218,56 @@ if __name__ == '__main__':
 
 
     # ############### Create Indexing ################
-    train_info_paths = glob.glob('./features/train_files/**/*.npz', recursive=True)
-    train_info_paths = sorted(train_info_paths)
+    # train_info_paths = glob.glob('./features/train_files/**/*.npz', recursive=True)
+    # train_info_paths = sorted(train_info_paths)
     
-    dataset_features = []
-    for train_info_path in tqdm.tqdm(train_info_paths):
-        train_info = np.load(train_info_path)
-        dataset_features.append(train_info['features'])
+    # dataset_features = []
+    # for train_info_path in tqdm.tqdm(train_info_paths):
+    #     train_info = np.load(train_info_path)
+    #     dataset_features.append(train_info['features'])
 
-    dataset_features = np.vstack(dataset_features)
-    indexing(dataset_features, method)
+    # dataset_features = np.vstack(dataset_features)
+    # indexing(dataset_features, method)
 
     # # ################# Calculate Accuracy, Precision, Recall, F1-Score ################
-    testset_info = glob.glob('./features/test_files/**/*.npz', recursive=True)
+    # testset_info = glob.glob('./features/test_files/**/*.npz', recursive=True)
     
-    testset_info = sorted(testset_info)
+    # testset_info = sorted(testset_info)
 
-    y_true_labels = []
-    y_pred_labels = []
-    for info in tqdm.tqdm(testset_info):
-        info = np.load(info)
-        features = info['features']
-        y_true_labels.extend(info['labels'])
+    # y_true_labels = []
+    # y_pred_labels = []
+    # for info in tqdm.tqdm(testset_info):
+    #     info = np.load(info)
+    #     features = info['features']
+    #     y_true_labels.extend(info['labels'])
 
-        for i, feature in enumerate(features):
-            if method == 'IVFPQ' or method == 'LSH':
-                feature = np.expand_dims(feature, axis=0)
-            nearest_neighbor = inference(feature, method, nneighbors=1)
-            y_pred_labels.append(nearest_neighbor[0][1])
+    #     for i, feature in enumerate(features):
+    #         if method == 'IVFPQ' or method == 'LSH':
+    #             feature = np.expand_dims(feature, axis=0)
+    #         nearest_neighbor = inference(feature, method, nneighbors=1)
+    #         y_pred_labels.append(nearest_neighbor[0][1])
 
-    accuracy = accuracy_score(y_true_labels, y_pred_labels)
-    precision = precision_score(y_true_labels, y_pred_labels, average='weighted')
-    recall = recall_score(y_true_labels, y_pred_labels, average='weighted')
-    f1 = f1_score(y_true_labels, y_pred_labels, average='weighted')
+    # accuracy = accuracy_score(y_true_labels, y_pred_labels)
+    # precision = precision_score(y_true_labels, y_pred_labels, average='weighted')
+    # recall = recall_score(y_true_labels, y_pred_labels, average='weighted')
+    # f1 = f1_score(y_true_labels, y_pred_labels, average='weighted')
 
-    print(f'Method: {method}')
-    print(f'Accuracy: {accuracy}')
-    print(f'Precision: {precision}')
-    print(f'Recall: {recall}')
-    print(f'F1-Score: {f1}')
+    # print(f'Method: {method}')
+    # print(f'Accuracy: {accuracy}')
+    # print(f'Precision: {precision}')
+    # print(f'Recall: {recall}')
+    # print(f'F1-Score: {f1}')
 
-    cm = confusion_matrix(y_true_labels, y_pred_labels)
+    # cm = confusion_matrix(y_true_labels, y_pred_labels)
 
-    # Plot the confusion matrix
-    plt.figure(figsize=(10, 7))
-    sns.heatmap(cm, annot=True, fmt='d')
-    plt.xlabel('Predicted')
-    plt.ylabel('True')
+    # # Plot the confusion matrix
+    # plt.figure(figsize=(10, 7))
+    # sns.heatmap(cm, annot=True, fmt='d')
+    # plt.xlabel('Predicted')
+    # plt.ylabel('True')
 
-    # Show the plot
-    plt.show()
+    # # Show the plot
+    # plt.show()
 
     ############### Inference ################
     ## Randomly select an image from the dataset ##
@@ -285,11 +294,11 @@ if __name__ == '__main__':
     plt.imshow(query_img)
     plt.title(f'Query: {query_label}')
 
-    for i, (d, label, file_name) in enumerate(k_neighbors):
+    for i, (similarity, label, file_name) in enumerate(k_neighbors):
+        print(label, file_name)
         plt.subplot(1, nneighbors + 1, i+2)
         plt.imshow(mpimg.imread(file_name))
-        print(label, file_name)
-        plt.title(f'{label}')
+        plt.title(f'{similarity:.2f}, {label}')
 
     plt.show()
  
