@@ -4,7 +4,7 @@ from keras.preprocessing import image
 import glob, tqdm, faiss, os, annoy, random
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, precision_recall_fscore_support
 import seaborn as sns
 
 import matplotlib.pyplot as plt
@@ -57,6 +57,7 @@ def extract_features(image_folder, batch_size, target_size):
 
     train_files = sorted(train_files)
     test_files = sorted(test_files)
+    print(len(train_files), len(test_files))
 
     for idx, files in enumerate([train_files, test_files]):
         for i in range(0, len(files), batch_size):
@@ -85,11 +86,11 @@ def extract_features(image_folder, batch_size, target_size):
             features = model.predict(batch_images)
 
             if idx == 0:
-                np.savez(f'./features/train_files/batch_number_{i//batch_size}.npz', 
+                np.savez(f'./features/train_files/batch_number_{i//batch_size:02}.npz', 
                         features= features, labels= labels, file_names= file_names)
                 print(f'Train_files: Batch number {i//batch_size} saved')
             else:
-                np.savez(f'./features/test_files/batch_number_{i//batch_size}.npz', 
+                np.savez(f'./features/test_files/batch_number_{i//batch_size:02}.npz', 
                         features= features, labels= labels, file_names= file_names)
                 print(f'Test_files: Batch number {i//batch_size} saved')
 
@@ -203,7 +204,7 @@ def inference(feature, method, index_file=None, train_info_folder = None, nneigh
     return k_neighbors
 
 if __name__ == '__main__':
-    method = 'IVFPQ'
+    method = 'Annoy'
 
     model = EfficientNetB0(weights='imagenet', include_top=False, pooling='avg')
     dim = model.output_shape[1] # Dimension of the feature vector
@@ -212,62 +213,62 @@ if __name__ == '__main__':
 
     ################ Extract_Features ################
     # image_folder = ['./Intel_Classification_Dataset/seg_train', 
-    # #                 './Intel_Classification_Dataset/seg_test']
-    # image_folder = './Dataset'
-    # extract_features(image_folder, batch_size=640, target_size=target_size)
+    #                 './Intel_Classification_Dataset/seg_test']
+    image_folder = './Dataset'
+    extract_features(image_folder, batch_size=640, target_size=target_size)
 
 
-    # ############### Create Indexing ################
-    # train_info_paths = glob.glob('./features/train_files/**/*.npz', recursive=True)
-    # train_info_paths = sorted(train_info_paths)
+    ############### Create Indexing ################
+    train_info_paths = glob.glob('./features/train_files/**/*.npz', recursive=True)
+    train_info_paths = sorted(train_info_paths)
     
-    # dataset_features = []
-    # for train_info_path in tqdm.tqdm(train_info_paths):
-    #     train_info = np.load(train_info_path)
-    #     dataset_features.append(train_info['features'])
+    dataset_features = []
+    for train_info_path in tqdm.tqdm(train_info_paths):
+        train_info = np.load(train_info_path)
+        dataset_features.append(train_info['features'])
 
-    # dataset_features = np.vstack(dataset_features)
-    # indexing(dataset_features, method)
+    dataset_features = np.vstack(dataset_features)
+    indexing(dataset_features, method)
 
-    # # ################# Calculate Accuracy, Precision, Recall, F1-Score ################
-    # testset_info = glob.glob('./features/test_files/**/*.npz', recursive=True)
+    # ################# Calculate Accuracy, Precision, Recall, F1-Score ################
+    testset_info = glob.glob('./features/test_files/**/*.npz', recursive=True)
     
-    # testset_info = sorted(testset_info)
+    testset_info = sorted(testset_info)
 
-    # y_true_labels = []
-    # y_pred_labels = []
-    # for info in tqdm.tqdm(testset_info):
-    #     info = np.load(info)
-    #     features = info['features']
-    #     y_true_labels.extend(info['labels'])
+    y_true_labels = []
+    y_pred_labels = []
+    for info in tqdm.tqdm(testset_info):
+        info = np.load(info)
+        features = info['features']
+        y_true_labels.extend(info['labels'])
 
-    #     for i, feature in enumerate(features):
-    #         if method == 'IVFPQ' or method == 'LSH':
-    #             feature = np.expand_dims(feature, axis=0)
-    #         nearest_neighbor = inference(feature, method, nneighbors=1)
-    #         y_pred_labels.append(nearest_neighbor[0][1])
+        for i, feature in enumerate(features):
+            if method == 'IVFPQ' or method == 'LSH':
+                feature = np.expand_dims(feature, axis=0)
+            nearest_neighbor = inference(feature, method, nneighbors=1)
+            y_pred_labels.append(nearest_neighbor[0][1])
 
-    # accuracy = accuracy_score(y_true_labels, y_pred_labels)
-    # precision = precision_score(y_true_labels, y_pred_labels, average='weighted')
-    # recall = recall_score(y_true_labels, y_pred_labels, average='weighted')
-    # f1 = f1_score(y_true_labels, y_pred_labels, average='weighted')
+    accuracy = accuracy_score(y_true_labels, y_pred_labels)
+    precision = precision_score(y_true_labels, y_pred_labels, average='macro')
+    recall = recall_score(y_true_labels, y_pred_labels, average='macro')
+    f1 = f1_score(y_true_labels, y_pred_labels, average='macro')
 
-    # print(f'Method: {method}')
-    # print(f'Accuracy: {accuracy}')
-    # print(f'Precision: {precision}')
-    # print(f'Recall: {recall}')
-    # print(f'F1-Score: {f1}')
+    print(f'Method: {method}')
+    print(f'Accuracy: {accuracy}')
+    print(f'Precision: {precision}')
+    print(f'Recall: {recall}')
+    print(f'F1-Score: {f1}')
 
-    # cm = confusion_matrix(y_true_labels, y_pred_labels)
+    cm = confusion_matrix(y_true_labels, y_pred_labels)
 
-    # # Plot the confusion matrix
-    # plt.figure(figsize=(10, 7))
-    # sns.heatmap(cm, annot=True, fmt='d')
-    # plt.xlabel('Predicted')
-    # plt.ylabel('True')
+    # Plot the confusion matrix
+    plt.figure(figsize=(10, 7))
+    sns.heatmap(cm, annot=True, fmt='d')
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
 
-    # # Show the plot
-    # plt.show()
+    # Show the plot
+    plt.show()
 
     ############### Inference ################
     ## Randomly select an image from the dataset ##
@@ -295,10 +296,10 @@ if __name__ == '__main__':
     plt.title(f'Query: {query_label}')
 
     for i, (similarity, label, file_name) in enumerate(k_neighbors):
-        print(label, file_name)
         plt.subplot(1, nneighbors + 1, i+2)
         plt.imshow(mpimg.imread(file_name))
         plt.title(f'{similarity:.2f}, {label}')
 
     plt.show()
  
+
