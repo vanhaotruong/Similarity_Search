@@ -10,6 +10,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
+import streamlit as st
+from PIL import Image
 
 
 def extract_features(image_folder, batch_size, target_size):
@@ -211,11 +213,52 @@ if __name__ == '__main__':
     target_size = (224, 224)
 
 
-    ################ Extract_Features ################
-    # image_folder = ['./Intel_Classification_Dataset/seg_train', 
-    #                 './Intel_Classification_Dataset/seg_test']
+    ############### Extract_Features ################
     image_folder = './Dataset'
     extract_features(image_folder, batch_size=640, target_size=target_size)
+
+    ############## Show feature vectors of random 5 images ################
+    image_paths = glob.glob('./Dataset/**/*.jpg', recursive=True) 
+    file_names = random.sample(image_paths, 5)
+
+    labels = []
+    features = []
+    for file_name in file_names:
+        query_label = os.path.basename(os.path.dirname(file_name))
+        query_label = query_label.split('-')[-1]
+        query_img = image.load_img(file_name, target_size=target_size)
+        x = image.img_to_array(query_img)
+        x = np.expand_dims(x, axis=0)
+        x = preprocess_input(x)
+        feature = model.predict(x)
+
+        labels.append(query_label)
+        features.append(feature)
+    
+    features = np.vstack(features)
+
+    global_vmin = np.min([np.min(features[i]) for i in range(5)])
+    global_vmax = np.max([np.max(features[i]) for i in range(5)])
+
+    plt.figure(figsize=(20, 5))
+
+    for i in range(5):  # Limit to first 5 images
+        # First row for the images
+        plt.subplot(2, 5, i+1)
+        img = mpimg.imread(file_names[i])
+        plt.imshow(img)
+        plt.title(labels[i])
+        plt.axis('off')  # to hide the x and y values on the axes
+
+        # Second row for the feature vectors
+        plt.subplot(2, 5, i+6)
+        plt.imshow(features[i][np.newaxis, :], aspect='auto', cmap='hot', vmin=global_vmin, vmax=global_vmax)
+        plt.title('Feature Vector')
+        plt.xlabel('Index')
+        plt.yticks([])  # Hide y-axis values
+        plt.colorbar(label='Intensity')
+
+    plt.show()
 
 
     ############### Create Indexing ################
@@ -230,7 +273,7 @@ if __name__ == '__main__':
     dataset_features = np.vstack(dataset_features)
     indexing(dataset_features, method)
 
-    # ################# Calculate Accuracy, Precision, Recall, F1-Score ################
+    ################# Calculate Accuracy, Precision, Recall, F1-Score ################
     testset_info = glob.glob('./features/test_files/**/*.npz', recursive=True)
     
     testset_info = sorted(testset_info)
@@ -262,7 +305,7 @@ if __name__ == '__main__':
     cm = confusion_matrix(y_true_labels, y_pred_labels)
 
     # Plot the confusion matrix
-    plt.figure(figsize=(10, 7))
+    plt.figure(figsize=(10, 10))
     sns.heatmap(cm, annot=True, fmt='d')
     plt.xlabel('Predicted')
     plt.ylabel('True')
@@ -271,10 +314,11 @@ if __name__ == '__main__':
     plt.show()
 
     ############### Inference ################
-    ## Randomly select an image from the dataset ##
-    # image_paths = glob.glob('./Intel_Classification_Dataset/**/*.jpg', recursive=True) 
+    # Randomly select an image from the dataset ##
     image_paths = glob.glob('./Dataset/**/*.jpg', recursive=True) 
     img_path = random.choice(image_paths)
+    
+    # img_path = './Dataset/n02111277-Newfoundland/n02111277_3504.jpg'
 
     ## Load the image and extract the feature ##
     query_label = os.path.basename(os.path.dirname(img_path))
@@ -286,8 +330,9 @@ if __name__ == '__main__':
     feature = model.predict(x)
 
     ## Inference and return nneighbors nearest neighbors ##
-    nneighbors = 7
+    nneighbors = 5
     k_neighbors = inference(feature, method, nneighbors=nneighbors)
+
 
     ## Display the query image and its nneighbors nearest neighbors ##
     plt.figure(figsize=(60, 20))
@@ -301,5 +346,29 @@ if __name__ == '__main__':
         plt.title(f'{similarity:.2f}, {label}')
 
     plt.show()
- 
+
+    ################ Streamkit ################
+    st.title('Search for Similar Images')
+
+    query_file = st.file_uploader("Upload Image", type=["png", "jpg", "jpeg"])
+
+    if query_file is not None:
+        query_img = image.load_img(query_file, target_size=target_size)
+
+        x = image.img_to_array(query_img)
+        x = np.expand_dims(x, axis=0)
+        x = preprocess_input(x)
+        feature = model.predict(x)
+
+        st.image(query_img, caption='Query Image', use_column_width=True)
+        st.write('---')
+
+        ## Inference and return nneighbors nearest neighbors ##
+        nneighbors = 5
+        k_neighbors = inference(feature, method, nneighbors=nneighbors)
+
+        cols = st.columns(nneighbors)
+        for i, (similarity, label, file_name) in enumerate(k_neighbors):
+            cols[i].image(mpimg.imread(file_name), caption=f'Similarity: {similarity:.2f}, Label: {label}', use_column_width=True)
+
 
