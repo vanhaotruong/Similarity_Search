@@ -213,139 +213,138 @@ if __name__ == '__main__':
     target_size = (224, 224)
 
 
-    ############### Extract_Features ################
-    image_folder = './Dataset'
-    extract_features(image_folder, batch_size=640, target_size=target_size)
+    # ############### Extract_Features ################
+    # image_folder = './Dataset'
+    # extract_features(image_folder, batch_size=640, target_size=target_size)
 
-    ############## Show feature vectors of random 5 images ################
-    image_paths = glob.glob('./Dataset/**/*.jpg', recursive=True) 
-    file_names = random.sample(image_paths, 5)
+    # ############## Show feature vectors of random 5 images ################
+    # image_paths = glob.glob('./Dataset/**/*.jpg', recursive=True) 
+    # file_names = random.sample(image_paths, 5)
 
-    labels = []
-    features = []
-    for file_name in file_names:
-        query_label = os.path.basename(os.path.dirname(file_name))
-        query_label = query_label.split('-')[-1]
-        query_img = image.load_img(file_name, target_size=target_size)
-        x = image.img_to_array(query_img)
-        x = np.expand_dims(x, axis=0)
-        x = preprocess_input(x)
-        feature = model.predict(x)
+    # labels = []
+    # features = []
+    # for file_name in file_names:
+    #     query_label = os.path.basename(os.path.dirname(file_name))
+    #     query_label = query_label.split('-')[-1]
+    #     query_img = image.load_img(file_name, target_size=target_size)
+    #     x = image.img_to_array(query_img)
+    #     x = np.expand_dims(x, axis=0)
+    #     x = preprocess_input(x)
+    #     feature = model.predict(x)
 
-        labels.append(query_label)
-        features.append(feature)
+    #     labels.append(query_label)
+    #     features.append(feature)
     
-    features = np.vstack(features)
+    # features = np.vstack(features)
 
-    global_vmin = np.min([np.min(features[i]) for i in range(5)])
-    global_vmax = np.max([np.max(features[i]) for i in range(5)])
+    # global_vmin = np.min([np.min(features[i]) for i in range(5)])
+    # global_vmax = np.max([np.max(features[i]) for i in range(5)])
 
-    plt.figure(figsize=(20, 5))
+    # plt.figure(figsize=(20, 5))
 
-    for i in range(5):  # Limit to first 5 images
-        # First row for the images
-        plt.subplot(2, 5, i+1)
-        img = mpimg.imread(file_names[i])
-        plt.imshow(img)
-        plt.title(labels[i])
-        plt.axis('off')  # to hide the x and y values on the axes
+    # for i in range(5):  # Limit to first 5 images
+    #     # First row for the images
+    #     plt.subplot(2, 5, i+1)
+    #     img = mpimg.imread(file_names[i])
+    #     plt.imshow(img)
+    #     plt.title(labels[i])
+    #     plt.axis('off')  # to hide the x and y values on the axes
 
-        # Second row for the feature vectors
-        plt.subplot(2, 5, i+6)
-        plt.imshow(features[i][np.newaxis, :], aspect='auto', cmap='hot', vmin=global_vmin, vmax=global_vmax)
-        plt.title('Feature Vector')
-        plt.xlabel('Index')
-        plt.yticks([])  # Hide y-axis values
-        plt.colorbar(label='Intensity')
+    #     # Second row for the feature vectors
+    #     plt.subplot(2, 5, i+6)
+    #     plt.imshow(features[i][np.newaxis, :], aspect='auto', cmap='hot', vmin=global_vmin, vmax=global_vmax)
+    #     plt.title('Feature Vector')
+    #     plt.xlabel('Index')
+    #     plt.yticks([])  # Hide y-axis values
+    #     plt.colorbar(label='Intensity')
 
-    plt.show()
+    # plt.show()
 
 
-    ############### Create Indexing ################
-    train_info_paths = glob.glob('./features/train_files/**/*.npz', recursive=True)
-    train_info_paths = sorted(train_info_paths)
+    # ############### Create Indexing ################
+    # train_info_paths = glob.glob('./features/train_files/**/*.npz', recursive=True)
+    # train_info_paths = sorted(train_info_paths)
     
-    dataset_features = []
-    for train_info_path in tqdm.tqdm(train_info_paths):
-        train_info = np.load(train_info_path)
-        dataset_features.append(train_info['features'])
+    # dataset_features = []
+    # for train_info_path in tqdm.tqdm(train_info_paths):
+    #     train_info = np.load(train_info_path)
+    #     dataset_features.append(train_info['features'])
 
-    dataset_features = np.vstack(dataset_features)
-    indexing(dataset_features, method)
+    # dataset_features = np.vstack(dataset_features)
+    # indexing(dataset_features, method)
 
-    ################# Calculate Accuracy, Precision, Recall, F1-Score ################
-    testset_info = glob.glob('./features/test_files/**/*.npz', recursive=True)
+    # ################# Calculate Accuracy, Precision, Recall, F1-Score ################
+    # testset_info = glob.glob('./features/test_files/**/*.npz', recursive=True)
     
-    testset_info = sorted(testset_info)
+    # testset_info = sorted(testset_info)
 
-    y_true_labels = []
-    y_pred_labels = []
-    for info in tqdm.tqdm(testset_info):
-        info = np.load(info)
-        features = info['features']
-        y_true_labels.extend(info['labels'])
+    # y_true_labels = []
+    # y_pred_labels = []
+    # for info in tqdm.tqdm(testset_info):
+    #     info = np.load(info)
+    #     features = info['features']
+    #     y_true_labels.extend(info['labels'])
 
-        for i, feature in enumerate(features):
-            if method == 'IVFPQ' or method == 'LSH':
-                feature = np.expand_dims(feature, axis=0)
-            nearest_neighbor = inference(feature, method, nneighbors=1)
-            y_pred_labels.append(nearest_neighbor[0][1])
+    #     for i, feature in enumerate(features):
+    #         if method == 'IVFPQ' or method == 'LSH':
+    #             feature = np.expand_dims(feature, axis=0)
+    #         nearest_neighbor = inference(feature, method, nneighbors=1)
+    #         y_pred_labels.append(nearest_neighbor[0][1])
 
-    accuracy = accuracy_score(y_true_labels, y_pred_labels)
-    precision = precision_score(y_true_labels, y_pred_labels, average='macro')
-    recall = recall_score(y_true_labels, y_pred_labels, average='macro')
-    f1 = f1_score(y_true_labels, y_pred_labels, average='macro')
+    # accuracy = accuracy_score(y_true_labels, y_pred_labels)
+    # precision = precision_score(y_true_labels, y_pred_labels, average='macro')
+    # recall = recall_score(y_true_labels, y_pred_labels, average='macro')
+    # f1 = f1_score(y_true_labels, y_pred_labels, average='macro')
 
-    print(f'Method: {method}')
-    print(f'Accuracy: {accuracy}')
-    print(f'Precision: {precision}')
-    print(f'Recall: {recall}')
-    print(f'F1-Score: {f1}')
+    # print(f'Method: {method}')
+    # print(f'Accuracy: {accuracy}')
+    # print(f'Precision: {precision}')
+    # print(f'Recall: {recall}')
+    # print(f'F1-Score: {f1}')
 
-    cm = confusion_matrix(y_true_labels, y_pred_labels)
+    # cm = confusion_matrix(y_true_labels, y_pred_labels)
 
-    # Plot the confusion matrix
-    plt.figure(figsize=(10, 10))
-    sns.heatmap(cm, annot=True, fmt='d')
-    plt.xlabel('Predicted')
-    plt.ylabel('True')
+    # # Plot the confusion matrix
+    # plt.figure(figsize=(10, 10))
+    # sns.heatmap(cm, annot=True, fmt='d')
+    # plt.xlabel('Predicted')
+    # plt.ylabel('True')
 
-    # Show the plot
-    plt.show()
+    # # Show the plot
+    # plt.show()
 
-    ############### Inference ################
-    # Randomly select an image from the dataset ##
-    image_paths = glob.glob('./Dataset/**/*.jpg', recursive=True) 
-    img_path = random.choice(image_paths)
+    # ############### Inference ################
+    # # Randomly select an image from the dataset ##
+    # image_paths = glob.glob('./Dataset/**/*.jpg', recursive=True) 
+    # img_path = random.choice(image_paths)
     
-    # img_path = './Dataset/n02111277-Newfoundland/n02111277_3504.jpg'
+    # # img_path = './Dataset/n02111277-Newfoundland/n02111277_3504.jpg'
 
-    ## Load the image and extract the feature ##
-    query_label = os.path.basename(os.path.dirname(img_path))
-    query_label = query_label.split('-')[-1]
-    query_img = image.load_img(img_path, target_size=target_size)
-    x = image.img_to_array(query_img)
-    x = np.expand_dims(x, axis=0)
-    x = preprocess_input(x)
-    feature = model.predict(x)
+    # ## Load the image and extract the feature ##
+    # query_label = os.path.basename(os.path.dirname(img_path))
+    # query_label = query_label.split('-')[-1]
+    # query_img = image.load_img(img_path, target_size=target_size)
+    # x = image.img_to_array(query_img)
+    # x = np.expand_dims(x, axis=0)
+    # x = preprocess_input(x)
+    # feature = model.predict(x)
 
-    ## Inference and return nneighbors nearest neighbors ##
-    nneighbors = 5
-    k_neighbors = inference(feature, method, nneighbors=nneighbors)
+    # ## Inference and return nneighbors nearest neighbors ##
+    # nneighbors = 5
+    # k_neighbors = inference(feature, method, nneighbors=nneighbors)
 
+    # ## Display the query image and its nneighbors nearest neighbors ##
+    # plt.figure(figsize=(60, 20))
+    # plt.subplot(1, nneighbors + 1, 1)
+    # plt.imshow(query_img)
+    # plt.title(f'Query: {query_label}')
 
-    ## Display the query image and its nneighbors nearest neighbors ##
-    plt.figure(figsize=(60, 20))
-    plt.subplot(1, nneighbors + 1, 1)
-    plt.imshow(query_img)
-    plt.title(f'Query: {query_label}')
+    # for i, (similarity, label, file_name) in enumerate(k_neighbors):
+    #     plt.subplot(1, nneighbors + 1, i+2)
+    #     plt.imshow(mpimg.imread(file_name))
+    #     plt.title(f'{similarity:.2f}, {label}')
 
-    for i, (similarity, label, file_name) in enumerate(k_neighbors):
-        plt.subplot(1, nneighbors + 1, i+2)
-        plt.imshow(mpimg.imread(file_name))
-        plt.title(f'{similarity:.2f}, {label}')
-
-    plt.show()
+    # plt.show()
 
     ################ Streamkit ################
     st.title('Search for Similar Images')
