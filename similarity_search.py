@@ -206,7 +206,7 @@ def inference(feature, method, index_file=None, train_info_folder = None, nneigh
     return k_neighbors
 
 if __name__ == '__main__':
-    method = 'Annoy'
+    method = 'LSH'
 
     model = EfficientNetB0(weights='imagenet', include_top=False, pooling='avg')
     dim = model.output_shape[1] # Dimension of the feature vector
@@ -261,7 +261,7 @@ if __name__ == '__main__':
     # plt.show()
 
 
-    # ############### Create Indexing ################
+    ############### Create Indexing ################
     # train_info_paths = glob.glob('./features/train_files/**/*.npz', recursive=True)
     # train_info_paths = sorted(train_info_paths)
     
