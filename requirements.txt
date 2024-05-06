@@ -1,0 +1,17 @@
+streamlit
+PyJWT
+langchain
+pymongo
+pypdf
+numpy
+Pillow
+altair < 5
+tensorflow
+tqdm
+openai
+faiss-cpu
+tiktoken
+annoy
+scikit-learn
+seaborn
+keras
